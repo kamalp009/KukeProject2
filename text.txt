@@ -1,1 +1,20 @@
-t
+# Compact version
+def process_file_and_combine(filename):
+    # Read and process file
+    codes = []
+    with open(filename, 'r') as file:
+        for line in file:
+            line = line.strip()
+            if line:
+                codes.extend(code.strip() for code in line.split(' - '))
+    
+    # Combine with av_list
+    av_list = ["ARMT", "KKRR", "UJJ", "PPK", "PP", "UUK", "OOOHJ", "EHHE"]
+    combined = codes + av_list
+    
+    # Remove duplicates while preserving order
+    return list(dict.fromkeys(combined))
+
+# Usage
+result = process_file_and_combine('data.txt')
+print(result)
