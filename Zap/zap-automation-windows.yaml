@@ -1,0 +1,154 @@
+# ZAP Windows Automation Configuration Script
+# Optimized for Windows ZAP installation
+
+env:
+  contexts:
+    - name: website-scan-context
+      urls:
+        - "https://your-website.com"  # Replace with your target website URL
+      includePaths:
+        - "https://your-website.com/.*"
+        - ".*"
+      excludePaths:
+        # Static assets to exclude for performance
+        - ".*\\.css"
+        - ".*\\.js"
+        - ".*\\.png"
+        - ".*\\.jpg"
+        - ".*\\.jpeg"
+        - ".*\\.gif"
+        - ".*\\.ico"
+        - ".*\\.woff"
+        - ".*\\.woff2"
+        - ".*\\.ttf"
+        - ".*\\.svg"
+        - ".*\\.pdf"
+        # Common exclusions
+        - ".*logout.*"
+        - ".*signout.*"
+        - ".*socket\\.io.*"
+      
+      # Optional: Authentication configuration
+      # Uncomment and configure if your site requires authentication
+      # authentication:
+      #   method: "form"  # Options: manual, http, form, json, script
+      #   parameters:
+      #     loginPageUrl: "https://your-website.com/login"
+      #     loginRequestUrl: "https://your-website.com/auth"
+      #     loginRequestBody: "username={%username%}&password={%password%}"
+      #   verification:
+      #     method: "response"
+      #     loggedInRegex: "Welcome\\s+.*"
+      #     loggedOutRegex: "Login"
+      #     pollFrequency: 60
+      #     pollUnits: "requests"
+      #   users:
+      #     - name: "test-user"
+      #       credentials:
+      #         username: "testuser"
+      #         password: "testpass"
+
+  # Global parameters
+  parameters:
+    failOnError: false         # Continue even if errors occur
+    failOnWarning: false       # Continue even if warnings occur
+    progressToStdout: true     # Show progress in console output
+
+jobs:
+  # 1. Configure passive scanning settings
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10          # Maximum alerts per rule
+      scanOnlyInScope: true         # Only scan URLs in scope
+      
+  # 2. Traditional spider for server-rendered content
+  - type: spider
+    parameters:
+      context: website-scan-context    # Use our defined context
+      maxDuration: 10                  # Maximum time in minutes
+      maxDepth: 5                      # Maximum crawl depth
+      maxChildren: 20                  # Maximum child nodes per page
+      acceptCookies: true              # Accept cookies during crawling
+      handleODataParametersVisited: false
+      parseComments: true
+      parseGit: false
+      parseRobotsTxt: true
+      parseSitemapXml: true
+      parseSVNEntries: false
+      postForm: true
+      processForm: true
+      requestWaitTime: 200             # Wait time between requests (ms)
+      sendRefererHeader: true
+      threadCount: 2                   # Number of spider threads
+
+  # 3. AJAX spider for modern JavaScript applications
+  - type: spiderAjax
+    parameters:
+      context: website-scan-context    # Use our defined context
+      maxDuration: 15                  # Maximum time in minutes
+      maxCrawlDepth: 5                 # Maximum crawl depth
+      numberOfBrowsers: 1              # Number of browser instances
+      browserId: "firefox-headless"    # Browser to use
+      clickDefaultElems: true
+      clickElemsOnce: true
+      eventWait: 1000                 # Wait time after events (ms)
+      maxCrawlStates: 0               # 0 = unlimited
+      randomInputs: true
+      reloadWait: 1000                # Wait time after reload (ms)
+
+  # 4. Wait for passive scanning to complete
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 10                  # Maximum wait time in minutes
+
+  # 5. Active security scanning (attacks the application)
+  - type: activeScan
+    parameters:
+      context: website-scan-context    # Use our defined context
+      maxRuleDurationInMins: 5         # Max time per rule
+      maxScanDurationInMins: 60        # Total max scan time
+      addQueryParam: false
+      defaultPolicy: ""                # Use default scan policy
+      delayInMs: 0                     # Delay between requests
+      handleAntiCSRFTokens: true       # Handle CSRF tokens
+      hostPerScan: 1                   # Hosts per scan
+      injectPluginIdInHeader: false
+      scanHeadersAllRequests: false
+      threadPerHost: 5                 # Threads per host
+
+  # 6. Generate comprehensive report
+  - type: report
+    parameters:
+      template: "traditional-html"      # Report format: traditional-html, traditional-xml, modern
+      reportDir: "reports"              # Output directory (relative path for Windows)
+      reportFile: "zap-security-report" # Report filename
+      reportTitle: "Website Security Scan Report"
+      reportDescription: "Comprehensive security scan of all website URLs"
+      displayReport: false
+      risks:                           # Include all risk levels
+        - "high"
+        - "medium"
+        - "low"
+        - "informational"
+      confidences:                     # Include all confidence levels
+        - "high"
+        - "medium" 
+        - "low"
+        - "falsePositive"
+        - "user"
+
+  # 7. Optional: Generate additional report formats
+  - type: report
+    parameters:
+      template: "traditional-xml"
+      reportDir: "reports"
+      reportFile: "zap-security-report"
+      risks: ["high", "medium", "low", "informational"]
+
+  # 8. Optional: Generate modern HTML report
+  - type: report
+    parameters:
+      template: "modern"
+      reportDir: "reports"
+      reportFile: "zap-modern-report"
+      risks: ["high", "medium", "low", "informational"]
